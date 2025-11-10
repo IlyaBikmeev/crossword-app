@@ -10,9 +10,9 @@ import (
 )
 
 func main() {
-	// Флаги
-	debug := flag.Bool("debug", false, "Включить режим отладки")
-	minQualityThreshold := flag.Float64("mqt", 4.4, "Минимальный уровень качества, ниже которого ветка отбрасывается")
+	// Flags
+	debug := flag.Bool("debug", false, "Enable debug mode")
+	minQualityThreshold := flag.Float64("mqt", 4.4, "minimum quality threshold")
 	maxSolutions := flag.Int("max", 1, "Maximum number of solutions")
 	parallel := flag.Bool("parallel", false, "Parallel flag")
 	flag.Parse()
@@ -20,7 +20,7 @@ func main() {
 	// Проверка аргументов
 	args := flag.Args()
 	if len(args) < 1 {
-		fmt.Println("Использование: crossword-cli [--debug] [--all] <файл_со_словами>")
+		fmt.Println("Usage: crossword-cli [--debug] [--all] [--parallel] <file_with_words>")
 		os.Exit(1)
 	}
 	inputFile := args[0]
@@ -40,7 +40,7 @@ func main() {
 	}
 
 	if *debug {
-		fmt.Printf("DEBUG: прочитано слов: %d\n", len(words))
+		fmt.Printf("DEBUG: read words: %d\n", len(words))
 	}
 
 	sort.Slice(words, func(i, j int) bool { return len(words[i]) > len(words[j]) })
@@ -53,7 +53,7 @@ func main() {
 		core.DensityMetric{})
 
 	if *debug {
-		fmt.Println("DEBUG: запускаем поиск решений...")
+		fmt.Println("DEBUG: Starting to find solutions...")
 	}
 
 	if *parallel {
@@ -63,12 +63,14 @@ func main() {
 	}
 
 	if *debug {
-		fmt.Printf("DEBUG: найдено решений: %d\n", len(solver.Solutions))
-		fmt.Printf("DEBUG: лучший результат: %f\n", solver.BestGrid.Evaluate(core.NewDensityAndIntersectionMetric(100, 100)))
+		fmt.Printf("DEBUG: total solutions: %d\n", len(solver.Solutions))
+		fmt.Printf("DEBUG: the best result: %f\n", solver.BestGrid.Evaluate(core.DensityMetric{}))
 	}
 
 	for i, grid := range solver.Solutions {
-		fmt.Printf("=== Решение #%d ===\n", i+1)
+		if *debug {
+			fmt.Printf("=== Solution #%d with score %f===\n", i+1, grid.Evaluate(core.DensityMetric{}))
+		}
 		fmt.Println(grid.Hash())
 	}
 }

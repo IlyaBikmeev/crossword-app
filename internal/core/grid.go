@@ -47,10 +47,8 @@ func (g *Grid) Hash() string {
 		return ""
 	}
 
-	// Нормализуем сетку (координаты от 0,0)
 	norm := g.Normalize()
 
-	// Находим границы нормализованной сетки
 	_, maxX, _, maxY := norm.bounds()
 
 	var b strings.Builder
@@ -165,6 +163,16 @@ func (g *Grid) PlaceWord(placement Placement) bool {
 		g.data[p] = ch
 	}
 	return true
+}
+
+func (g *Grid) RemoveWord(placement Placement) {
+	dx, dy := g.dirDelta(placement.Direction)
+	runes := []rune(placement.Word)
+
+	for i, _ := range runes {
+		p := Point{placement.Point.X + i*dx, placement.Point.Y + i*dy}
+		g.data[p] = '.'
+	}
 }
 
 func (g *Grid) PositionsList(word string) []Placement {

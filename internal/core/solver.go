@@ -1,7 +1,6 @@
 package core
 
 import (
-	"fmt"
 	"sort"
 	"strings"
 )
@@ -25,112 +24,65 @@ func NewSolver(Words []string, MaxSolutions int, MinQualityThreshold float64, me
 }
 
 func (s *Solver) FindSolutions() {
-	var helper func(grid *Grid, index, depth int)
-	seen := make(map[string]bool)
-	var bestScore = 0.0
-
-	helper = func(grid *Grid, index, depth int) {
-		if len(s.Solutions) >= s.MaxSolutions {
-			return
-		}
-
-		hash := grid.Hash()
-		if _, exists := seen[hash]; exists {
-			return
-		}
-
-		seen[hash] = true
-		currentScore := grid.Evaluate(s.Metric)
-
-		if index > 0 {
-			if bestScore-currentScore > s.MinQualityThreshold {
-				//fmt.Printf("Слишком хуевая схема: %f\n", currentScore)
-				return
-			}
-		}
-
-		if index >= len(s.Words) {
-			s.Solutions = append(s.Solutions, grid)
-
-			if currentScore > bestScore {
-				fmt.Printf("🏆Found a better solution! New high score: %f\n", currentScore)
-				bestScore = currentScore
-			}
-
-			return
-		}
-
-		for _, placement := range grid.PositionsList(s.Words[index]) {
-			newGrid := grid.Copy()
-			newGrid.PlaceWord(placement)
-			helper(newGrid, index+1, depth+1)
-		}
-	}
-
-	helper(NewGrid(), 0, 0)
+	s.dfs(NewGrid(), 0, 0, make(map[string]bool), 0.0)
 
 	sort.Slice(s.Solutions, func(i, j int) bool {
 		return s.Solutions[i].score > s.Solutions[j].score
 	})
 	s.BestGrid = s.Solutions[0]
-
 }
 
-//func (s *Solver) FindSolutionsParallel() {
-//	type Job struct {
-//		grid  *Grid
-//		index int
-//	}
-//
-//	seen := make(map[string]bool)
-//	bestScore := 0.0
-//
-//	var worker func(job Job, wg *sync.WaitGroup)
-//
-//	worker = func(job Job, wg *sync.WaitGroup) {
-//		defer wg.Done()
-//
-//		index := job.index
-//		grid := job.grid
-//
-//		if len(s.Solutions) >= s.MaxSolutions {
-//			return
-//		}
-//
-//		hash := grid.Hash()
-//		if _, exists := seen[hash]; exists {
-//			return
-//		}
-//
-//		seen[hash] = true
-//		currentScore := grid.Evaluate(s.Metric)
-//
-//		if index > 0 {
-//			if bestScore-currentScore > s.MinQualityThreshold {
-//				//fmt.Printf("Слишком хуевая схема: %f\n", currentScore)
-//				return
-//			}
-//		}
-//
-//		if index >= len(s.Words) {
-//			s.Solutions = append(s.Solutions, grid)
-//
-//			if currentScore > bestScore {
-//				fmt.Printf("🏆Found a better solution! New high score: %f\n", currentScore)
-//				bestScore = currentScore
-//			}
-//
-//			return
-//		}
-//
-//		for _, placement := range grid.PositionsList(s.Words[index]) {
-//			newGrid := grid.Copy()
-//			newGrid.PlaceWord(placement)
-//			worker(newGrid, index+1)
-//		}
-//
-//	}
-//}
+func (s *Solver) dfs(
+	grid *Grid,
+	index,
+	depth int,
+	seen map[string]bool,
+	bestScore float64) {
+
+	if len(s.Solutions) >= s.MaxSolutions {
+		return
+	}
+
+	hash := grid.Hash()
+	if _, exists := seen[hash]; exists {
+		return
+	}
+
+	seen[hash] = true
+	currentScore := grid.Evaluate(s.Metric)
+
+	if index > 0 {
+		if bestScore-currentScore > s.MinQualityThreshold {
+
+			return
+		}
+	}
+
+	if index >= len(s.Words) {
+		s.Solutions = append(s.Solutions, grid)
+
+		if currentScore > bestScore {
+			bestScore = currentScore
+		}
+
+		return
+	}
+
+	for _, placement := range grid.PositionsList(s.Words[index]) {
+		newGrid := grid.Copy()
+		newGrid.PlaceWord(placement)
+		s.dfs(newGrid, index+1, depth+1, seen, bestScore)
+	}
+}
+
+type Job struct {
+	grid  *Grid
+	index int
+}
+
+func (s *Solver) FindSolutionsParallel() {
+	//TODO
+}
 
 func preprocessWords(words []string) []string {
 	var processed []string
