@@ -4,6 +4,10 @@ A high-performance crossword puzzle generator written in Go that automatically c
 
 > Implementation of the **criss-cross problem** from Charles Wetherell's ["Etudes for Programmers"](https://archive.org/details/etudesforprogram0000weth).
 
+[![Live Demo](https://img.shields.io/badge/🎮_Live_Demo-Try_Now-blue?style=for-the-badge)](https://ilyabikmeev.github.io/crossword-app/)
+
+Try the interactive web visualization with sample crosswords!
+
 ## Features
 
 - 🚀 **Fast Algorithm**: Uses depth-first search with pruning to efficiently explore the solution space
@@ -140,7 +144,7 @@ The HTML viewer provides:
 - 📱 Responsive design for mobile devices
 - ✨ Modern UI with gradient backgrounds
 
-![Crossword Visualization Example](https://via.placeholder.com/800x400?text=Crossword+Grid+Visualization)
+[![Crossword Demo Screenshot](https://img.shields.io/badge/Click_to_open-Live_Demo-brightgreen?style=for-the-badge&logo=github)](https://ilyabikmeev.github.io/crossword-app/)
 
 ## Architecture
 
@@ -301,6 +305,33 @@ Contributions are welcome! Areas for improvement:
 - Output formats (PDF, SVG, HTML)
 - Interactive mode
 - Constraint satisfaction solver
+
+## Live Demo
+
+Experience the interactive crossword visualization:
+
+### [🎮 Try it now: ilyabikmeev.github.io/crossword-app](https://ilyabikmeev.github.io/crossword-app/)
+
+**Features:**
+- Navigate through multiple crossword solutions
+- Use ← → arrow keys or click buttons
+- Responsive design works on mobile
+- Beautiful gradient UI
+
+---
+
+### Deploy Your Own
+
+Enable GitHub Pages in Settings → Pages (Branch: `main`, Folder: `/root`) and push your `solution.txt`:
+
+```bash
+./bin/crossword --max=5 datasets/words35.txt > solution.txt
+git add solution.txt index.html
+git commit -m "Update demo"
+git push
+```
+
+Your demo will be available at `https://[your-username].github.io/crossword-app/`
 
 ## License
 
