@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Кроссворд Генератор</title>
+    <title>Crossword Generator</title>
     <style>
         * {
             margin: 0;
@@ -493,73 +493,139 @@
 </head>
 <body>
 <div class="container">
-    <h1>🎯 Кроссворд Генератор</h1>
-    <div class="subtitle">Автоматическая генерация оптимальных схем кроссвордов</div>
+    <h1>🎯 Crossword Generator</h1>
+    <div class="subtitle">Automatic generation of optimal crossword layouts</div>
 
     <div id="content">
         <div class="loading">
             <div class="loading-spinner"></div>
-            <div>Загрузка кроссворда...</div>
+            <div>Loading crossword...</div>
         </div>
     </div>
 </div>
 
-<!-- Библиотеки для экспорта в PDF -->
+<!-- Libraries for PDF export -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
 <script>
-    let crosswordData = null;
+    let allSolutions = [];
+    let currentIndex = 0;
 
-    async function loadCrossword() {
+    async function loadCrosswords() {
         const contentDiv = document.getElementById('content');
 
         try {
             const fileName = "solution.txt"
             const response = await fetch(fileName);
-            if (!response.ok) throw new Error(`Файл ${fileName} не найден`);
+            if (!response.ok) throw new Error(`File ${fileName} not found`);
 
             const text = await response.text();
 
-            // --- Разбираем файл ---
-            // Разделяем по символу |
-            const rows = text
-                .trim()
-                .split('|')
-                .filter(line => line.trim().length > 0);
+            // Parse all solutions from file
+            allSolutions = parseSolutions(text);
 
-            // Превращаем строки в массив символов
-            const grid = rows.map(r => r.split(''));
+            if (allSolutions.length === 0) {
+                throw new Error('No solutions found');
+            }
 
-            const width = grid[0].length;
-            const height = grid.length;
-
-            // Вычисляем список слов (по горизонтали)
-            const words = extractWords(grid);
-
-            crosswordData = {
-                grid,
-                width,
-                height,
-                words,
-                intersections: 0,
-                density: calcDensity(grid),
-                score: 0
-            };
-
-            renderCrossword(crosswordData);
+            currentIndex = 0;
+            renderCrossword();
         } catch (error) {
+            console.log(error)
             contentDiv.innerHTML = `
             <div class="error">
                 <div class="error-icon">⚠️</div>
-                <div class="error-message">Не удалось загрузить кроссворд</div>
+                <div class="error-message">Failed to load crossword</div>
                 <div class="error-hint">${error.message}</div>
             </div>
         `;
         }
     }
 
-    // Подсчёт плотности
+    // Parse all solutions from file
+    function parseSolutions(text) {
+        const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+        
+        // Try parsing with headers (debug mode)
+        let solutions = parseWithHeaders(lines);
+        
+        // If failed, parse as simple list (normal mode)
+        if (solutions.length === 0) {
+            solutions = parseSimple(lines);
+        }
+        
+        return solutions;
+    }
+    
+    // Parse with headers (debug mode): === Solution #N with score X.XX===
+    function parseWithHeaders(lines) {
+        const solutions = [];
+        let currentSolution = null;
+        
+        for (let line of lines) {
+            // Look for header in English or Russian
+            const headerMatch = line.match(/===\s*(?:Solution|Решение)\s*#(\d+)\s*(?:with score|со счётом)\s*([\d.]+)\s*===/i);
+            
+            if (headerMatch) {
+                if (currentSolution) {
+                    solutions.push(currentSolution);
+                }
+                currentSolution = {
+                    number: parseInt(headerMatch[1]),
+                    score: parseFloat(headerMatch[2]),
+                    gridText: ''
+                };
+            } else if (currentSolution && line.includes('|') && !line.startsWith('#')) {
+                currentSolution.gridText = line;
+            }
+        }
+        
+        if (currentSolution && currentSolution.gridText) {
+            solutions.push(currentSolution);
+        }
+        
+        return solutions.map(parseGridData);
+    }
+    
+    // Parse simple format (no headers)
+    function parseSimple(lines) {
+        const solutions = [];
+        let solutionNumber = 1;
+        
+        for (let line of lines) {
+            // Grid line - contains | and doesn't start with #
+            if (line.includes('|') && !line.startsWith('#')) {
+                solutions.push({
+                    number: solutionNumber++,
+                    score: 0,
+                    gridText: line
+                });
+            }
+        }
+        
+        return solutions.map(parseGridData);
+    }
+    
+    // Parse grid data
+    function parseGridData(sol) {
+        const rows = sol.gridText
+            .split('|')
+            .filter(r => r.length > 0)
+            .map(r => r.split(''));
+        
+        return {
+            number: sol.number,
+            score: sol.score,
+            grid: rows,
+            width: rows[0]?.length || 0,
+            height: rows.length,
+            density: calcDensity(rows),
+            words: extractWords(rows)
+        };
+    }
+
+    // Calculate density
     function calcDensity(grid) {
         let total = 0, filled = 0;
         grid.forEach(row => row.forEach(ch => {
@@ -569,7 +635,7 @@
         return filled / total;
     }
 
-    // Извлекаем слова из сетки (по горизонтали)
+    // Extract words from grid
     function extractWords(grid) {
         const words = [];
         grid.forEach(row => {
@@ -581,14 +647,39 @@
         return words;
     }
 
-    // Рендер одной сетки (в упрощённом виде, без навигации)
-    function renderCrossword(data) {
+    // Render current solution
+    function renderCrossword() {
+        if (allSolutions.length === 0) return;
+        
+        const data = allSolutions[currentIndex];
         const contentDiv = document.getElementById('content');
+        
         let html = `
-        <div class="main-content">
-            <div class="grid-container">
-                <div class="grid" style="grid-template-columns: repeat(${data.width}, 35px);">
-    `;
+            ${allSolutions.length > 1 ? `
+            <div class="navigation">
+                <button class="nav-button" onclick="prevSolution()" ${currentIndex === 0 ? 'disabled' : ''}>
+                    ← Previous
+                </button>
+                <div class="solution-counter">
+                    Solution ${currentIndex + 1} of ${allSolutions.length}
+                    ${data.score > 0 ? `<br><small style="font-size: 14px; opacity: 0.7;">Score: ${data.score.toFixed(2)}</small>` : ''}
+                </div>
+                <button class="nav-button" onclick="nextSolution()" ${currentIndex === allSolutions.length - 1 ? 'disabled' : ''}>
+                    Next →
+                </button>
+            </div>
+            ` : data.score > 0 ? `
+            <div class="navigation">
+                <div class="solution-counter">
+                    Score: ${data.score.toFixed(2)}
+                </div>
+            </div>
+            ` : ''}
+            
+            <div class="main-content">
+                <div class="grid-container">
+                    <div class="grid" style="grid-template-columns: repeat(${data.width}, 35px);">
+        `;
 
         data.grid.forEach(row => {
             row.forEach(cell => {
@@ -597,10 +688,39 @@
             });
         });
 
+        html += `
+                    </div>
+                </div>
+            </div>
+        `;
+
         contentDiv.innerHTML = html;
     }
 
-    loadCrossword();
+    function nextSolution() {
+        if (currentIndex < allSolutions.length - 1) {
+            currentIndex++;
+            renderCrossword();
+        }
+    }
+
+    function prevSolution() {
+        if (currentIndex > 0) {
+            currentIndex--;
+            renderCrossword();
+        }
+    }
+
+    // Keyboard navigation
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'ArrowLeft') {
+            prevSolution();
+        } else if (e.key === 'ArrowRight') {
+            nextSolution();
+        }
+    });
+
+    loadCrosswords();
 </script>
 
 </body>
